@@ -32,6 +32,33 @@ For a C++ project simply rename the file to .cpp and re-run the build script
 #include <stdlib.h>
 #include <time.h>
 
+// return a random number between 0 and limit inclusive (https://stackoverflow.com/questions/2999075/generate-a-random-number-within-range)
+int rand_lim(int limit) {
+	int divisor = RAND_MAX / (limit + 1);
+	int retval;
+	do {
+		retval = rand() / divisor;
+	} while (retval > limit);
+	return retval;
+}
+
+struct cell {
+	int* choices;
+	int entropy;
+	int x;
+	int y;
+};
+
+struct cell cell(int x, int y) {
+	struct cell cell;
+	cell.x = x;
+	cell.y = y;
+	cell.choices = malloc(9 * sizeof(int));
+	cell.entropy = 9;
+	for (int i = 0; i < 9; i++) cell.choices[i] = i;
+	return cell;
+}
+
 void show() {
 	for (int i = 0; i < 4; i++) DrawRectangle(i * 300, 0, 4, 900, WHITE);
 	for (int i = 0; i < 4; i++) DrawRectangle(0, i * 300, 900, 4, WHITE);
