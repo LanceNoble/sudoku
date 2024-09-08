@@ -44,22 +44,61 @@ int rand_lim(int limit) {
 
 struct cell {
 	int* choices;
-	int entropy;
-	int x;
-	int y;
+	int length;
 };
 
-struct cell cell(int x, int y) {
+struct cell cell() {
 	struct cell cell;
-	cell.x = x;
-	cell.y = y;
 	cell.choices = malloc(9 * sizeof(int));
-	cell.entropy = 9;
-	for (int i = 0; i < 9; i++) cell.choices[i] = i;
+	cell.length = 9;
+	for (int i = 0; i < 9; i++) 
+		cell.choices[i] = i;
 	return cell;
 }
 
-void show() {
+void elim(struct cell board[], int cellNum, int final);
+void prop(struct cell board[], int cellNum, int final);
+
+void elim(struct cell board[], int cellNum, int final) {
+	if (board[cellNum].length == 1)
+		return;
+	int found = 0;
+	for (int i = 0; i < board[cellNum].length; i++) {
+		if (found)
+			board[cellNum].choices[i - 1] = board[cellNum].choices[i];
+		if (board[cellNum].choices[i] == final)
+			found = 1;
+	}
+}
+
+void prop(struct cell board[], int cellNum, int final) {
+	int col = cellNum % 9;
+	int row = (cellNum - col) / 9;
+	int jBox = col;
+	int iBox = row;
+	int jBoxEnd = jBox + 3;
+	int iBoxEnd = iBox + 3;
+	while (jBox % 3 != 0) --jBox;
+	while (iBox % 3 != 0) --iBox;
+	for (int i = 0; i < 9; i++) {
+		if (i < jBox || i > jBox + 2) 
+			elim(board, row * 9 + i, final);
+	}
+	for (int i = 0; i < 9; i++) {
+		if (i < iBox || i > iBox + 2)
+			elim(board, i * 9 + col, final);
+	}
+	while (jBox < jBoxEnd) {
+		while (iBox < iBoxEnd) {
+			elim(board, iBox * 9 + jBox, final);
+			iBox++;
+		}
+		jBox++;
+		iBox -= 3;
+	}
+}
+
+void show(struct cell board[]) {
 	for (int i = 0; i < 4; i++) DrawRectangle(i * 300, 0, 4, 900, WHITE);
 	for (int i = 0; i < 4; i++) DrawRectangle(0, i * 300, 900, 4, WHITE);
 	for (int i = 1; i < 9; i++) DrawLine(i * 100 + 2, 0, i * 100 + 2, 900, WHITE);
@@ -89,7 +128,7 @@ int main ()
 		// Setup the backbuffer for drawing (clear color and depth buffers)
 		ClearBackground(BLACK);
 		
-		show();
+		show(NULL);
 
 		// end the frame and get ready for the next one  (display frame, poll input, etc...)
 		EndDrawing();
