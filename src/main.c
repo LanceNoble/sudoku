@@ -104,15 +104,41 @@ void show(struct cell board[]) {
 	for (int i = 1; i < 9; i++) DrawLine(i * 100 + 2, 0, i * 100 + 2, 900, WHITE);
 	for (int i = 1; i < 9; i++) DrawLine(0, i * 100 + 2, 900, i * 100 + 2, WHITE);
 
+	int fontSize = 900 / 27;
 	for (int i = 0; i < 81; i++) {
+		int col = i % 9;
+		int originX = col * 100;
+		int originY = (i - col) / 9 * 100;
 		for (int j = 0; j < 9; j++) {
-
+			int colCell = j % 3;
+			DrawText(TextFormat("%i", j), originX + 10 + colCell * 33, originY + 5 + (j - colCell) / 3 * 33, fontSize, WHITE);
 		}
 	}
 }
 
-int main ()
-{
+int main() {
+	// Seed the RNG
+	srand(time(NULL));
+
+	struct cell board[81];
+
+	// Track cells with the lowest entropy
+	int minEntsCount = 81;
+	struct cell** minEnts = malloc(sizeof(struct cell*) * minEntsCount);
+
+	// Check if memory was successfully allocated or compiler cries
+	if (minEnts == NULL) {
+		printf("Memory not allocated");
+		return;
+	}
+
+	for (int i = 0; i < 81; i++) {
+		board[i] = cell();
+		minEnts[i] = &board[i];
+	}
+
+
+
 	// Tell the window to use vysnc and work on high DPI displays
 	SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
 
@@ -129,6 +155,7 @@ int main ()
 		ClearBackground(BLACK);
 		
 		show(NULL);
+		//DrawText("0", 0, 0, 900/27, WHITE);
 
 		// end the frame and get ready for the next one  (display frame, poll input, etc...)
 		EndDrawing();
