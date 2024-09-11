@@ -43,24 +43,25 @@ int rand_lim(int limit) {
 }
 
 struct cell {
-	int num;
+	int num; // label in an event that its index in an array does not match its position on the board
 	int* choices;
 	int length;
 };
 
+// construct a cell
 struct cell cell(int num) {
 	struct cell cell;
 	cell.choices = malloc(9 * sizeof(int));
 	cell.length = 9;
 	cell.num = num;
-	for (int i = 0; i < 9; i++) 
-		cell.choices[i] = i;
+	for (int i = 0; i < 9; i++) cell.choices[i] = i;
 	return cell;
 }
 
 void elim(struct cell board[], int cellNum, int choice);
 void prop(struct cell board[], int cellNum, int choice);
 
+// eliminate the possibility that a cell can contain this number
 void elim(struct cell board[], int cellNum, int choice) {
 	if (board[cellNum].length == 1)
 		return;
@@ -77,33 +78,25 @@ void elim(struct cell board[], int cellNum, int choice) {
 		prop(board, cellNum, board[cellNum].choices[0]);
 }
 
+// spread the news that all cells in the same row, box, and column as the collapsed cell can no longer contain its number 
 void prop(struct cell board[], int cellNum, int choice) {
 	int col = cellNum % 9;
 	int row = (cellNum - col) / 9;
-	int jBox = col;
-	int iBox = row;
-	while (jBox % 3 != 0) --jBox;
-	while (iBox % 3 != 0) --iBox;
-	int jBoxEnd = jBox + 3;
-	int iBoxEnd = iBox + 3;
+	int yBox = col - (col % 3);
+	int xBox = row - (row % 3);
 	for (int i = 0; i < 9; i++) {
-		if (i < jBox || i > jBox + 2) 
-			elim(board, row * 9 + i, choice);
-	}
-	for (int i = 0; i < 9; i++) {
-		if (i < iBox || i > iBox + 2)
-			elim(board, i * 9 + col, choice);
-	}
-	while (jBox < jBoxEnd) {
-		while (iBox < iBoxEnd) {
-			elim(board, iBox * 9 + jBox, choice);
-			iBox++;
+		elim(board, row * 9 + i, choice);
+		elim(board, i * 9 + col, choice);
+		if (yBox > col + 2) {
+			yBox -= 3;
+			xBox++;
 		}
-		jBox++;
-		iBox -= 3;
+		elim(board, xBox * 9 + yBox, choice);
+		yBox++;	
 	}
 }
 
+// draw the sudoku board
 void show(struct cell board[]) {
 	for (int i = 0; i < 4; i++) DrawRectangle(i * 300, 0, 4, 900, WHITE);
 	for (int i = 0; i < 4; i++) DrawRectangle(0, i * 300, 900, 4, WHITE);
@@ -116,7 +109,7 @@ void show(struct cell board[]) {
 		int originX = col * 100;
 		int originY = (i - col) / 9 * 100;
 		if (board[i].length == 1) {
-			DrawText(TextFormat("%i", board[i].choices[0]), originX  + 50 - MeasureText(TextFormat("%i", board[i].choices[0]), 50) / 2, originY + 25, 50, WHITE);
+			DrawText(TextFormat("%i", board[i].choices[0]), originX + 50 - MeasureText(TextFormat("%i", board[i].choices[0]), 50) / 2, originY + 25, 50, WHITE);
 			continue;
 		}
 		for (int j = 0; j < board[i].length; j++) {
@@ -124,6 +117,33 @@ void show(struct cell board[]) {
 			DrawText(TextFormat("%i", board[i].choices[j]), originX + 10 + colCell * 33, originY + 5 + (j - colCell) / 3 * 33, fontSize, WHITE);
 		}
 	}
+}
+
+// validate sudoku board
+int validate(struct cell board[]) {
+	int sum = 0;
+	for (int i = 0; i < 81; i++) {
+		int col = i % 9;
+		int row = (i - col) / 9;
+		sum += board[row * 9 + col].choices[0];
+		sum += board[col * 9 + row].choices[0];
+	}
+	if (sum < 648)
+		return 0;
+	for (int i = 0; i < 81; i++) {
+
+	}
+	for (int j = 0; j < 9; j += 3) {
+		for (int i = 0; i < 9; i += 3) {
+			sum = 0;
+			for (int l = j; l < j + 3; l++) {
+				for (int k = i; k < j + 3; k++) {
+
+				}
+			}
+		}
+	}
+	return 1;
 }
 
 int main() {
