@@ -43,54 +43,60 @@ int rand_lim(int limit) {
 }
 
 struct cell {
+	int num;
 	int* choices;
 	int length;
 };
 
-struct cell cell() {
+struct cell cell(int num) {
 	struct cell cell;
 	cell.choices = malloc(9 * sizeof(int));
 	cell.length = 9;
+	cell.num = num;
 	for (int i = 0; i < 9; i++) 
 		cell.choices[i] = i;
 	return cell;
 }
 
-void elim(struct cell board[], int cellNum, int final);
-void prop(struct cell board[], int cellNum, int final);
+void elim(struct cell board[], int cellNum, int choice);
+void prop(struct cell board[], int cellNum, int choice);
 
-void elim(struct cell board[], int cellNum, int final) {
+void elim(struct cell board[], int cellNum, int choice) {
 	if (board[cellNum].length == 1)
 		return;
 	int found = 0;
 	for (int i = 0; i < board[cellNum].length; i++) {
-		if (found)
-			board[cellNum].choices[i - 1] = board[cellNum].choices[i];
-		if (board[cellNum].choices[i] == final)
+		if (board[cellNum].choices[i] == choice) {
 			found = 1;
+			board[cellNum].length--;
+		}
+		if (found)
+			board[cellNum].choices[i] = board[cellNum].choices[i + 1];
 	}
+	if (board[cellNum].length == 1)
+		prop(board, cellNum, board[cellNum].choices[0]);
 }
 
-void prop(struct cell board[], int cellNum, int final) {
+void prop(struct cell board[], int cellNum, int choice) {
 	int col = cellNum % 9;
 	int row = (cellNum - col) / 9;
 	int jBox = col;
 	int iBox = row;
-	int jBoxEnd = jBox + 3;
-	int iBoxEnd = iBox + 3;
 	while (jBox % 3 != 0) --jBox;
 	while (iBox % 3 != 0) --iBox;
+	int jBoxEnd = jBox + 3;
+	int iBoxEnd = iBox + 3;
 	for (int i = 0; i < 9; i++) {
 		if (i < jBox || i > jBox + 2) 
-			elim(board, row * 9 + i, final);
+			elim(board, row * 9 + i, choice);
 	}
 	for (int i = 0; i < 9; i++) {
 		if (i < iBox || i > iBox + 2)
-			elim(board, i * 9 + col, final);
+			elim(board, i * 9 + col, choice);
 	}
 	while (jBox < jBoxEnd) {
 		while (iBox < iBoxEnd) {
-			elim(board, iBox * 9 + jBox, final);
+			elim(board, iBox * 9 + jBox, choice);
 			iBox++;
 		}
 		jBox++;
@@ -109,9 +115,13 @@ void show(struct cell board[]) {
 		int col = i % 9;
 		int originX = col * 100;
 		int originY = (i - col) / 9 * 100;
-		for (int j = 0; j < 9; j++) {
+		if (board[i].length == 1) {
+			DrawText(TextFormat("%i", board[i].choices[0]), originX  + 50 - MeasureText(TextFormat("%i", board[i].choices[0]), 50) / 2, originY + 25, 50, WHITE);
+			continue;
+		}
+		for (int j = 0; j < board[i].length; j++) {
 			int colCell = j % 3;
-			DrawText(TextFormat("%i", j), originX + 10 + colCell * 33, originY + 5 + (j - colCell) / 3 * 33, fontSize, WHITE);
+			DrawText(TextFormat("%i", board[i].choices[j]), originX + 10 + colCell * 33, originY + 5 + (j - colCell) / 3 * 33, fontSize, WHITE);
 		}
 	}
 }
@@ -133,11 +143,9 @@ int main() {
 	}
 
 	for (int i = 0; i < 81; i++) {
-		board[i] = cell();
+		board[i] = cell(i);
 		minEnts[i] = &board[i];
 	}
-
-
 
 	// Tell the window to use vysnc and work on high DPI displays
 	SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
@@ -145,6 +153,8 @@ int main() {
 	// Create the window and OpenGL context
 	InitWindow(1920, 1080, "sudoku");
 	
+	int minEnt = 9;
+	int chosen = 0;
 	// game loop
 	while (!WindowShouldClose())		// run the loop untill the user presses ESCAPE or presses the Close button on the window
 	{
@@ -154,8 +164,43 @@ int main() {
 		// Setup the backbuffer for drawing (clear color and depth buffers)
 		ClearBackground(BLACK);
 		
-		show(NULL);
-		//DrawText("0", 0, 0, 900/27, WHITE);
+		show(board);
+
+		int singularCount = 0;
+		for (int i = 0; i < 81; i++) {
+			if (board[i].length == 1)
+				singularCount++;
+		}
+		DrawText(TextFormat("The current lowest entropy is: %i", minEnt), 0, 1000, 30, WHITE);
+		DrawText(TextFormat("Cell %i has been chosen", chosen), 0, 950, 30, WHITE);
+
+		if (singularCount < 81) {
+			int iCell = rand_lim(minEntsCount - 1);
+			chosen = minEnts[iCell]->num;
+			minEnts[iCell]->choices[0] = minEnts[iCell]->choices[rand_lim(minEnts[iCell]->length - 1)];
+			minEnts[iCell]->length = 1;
+			prop(board, minEnts[iCell]->num, minEnts[iCell]->choices[0]);
+
+			minEnt = 9;
+			for (int i = 0; i < 81; i++) {
+				if (board[i].length < minEnt && board[i].length > 1)
+					minEnt = board[i].length;
+			}
+			minEntsCount = 0;
+			for (int i = 0; i < 81; i++) {
+				if (board[i].length == minEnt)
+					minEntsCount++;
+			}
+			free(minEnts);
+			minEnts = malloc(sizeof(struct cell*) * minEntsCount);
+			int iMinEnts = 0;
+			for (int i = 0; i < 81; i++) {
+				if (board[i].length == minEnt) {
+					minEnts[iMinEnts] = &board[i];
+					iMinEnts++;
+				}
+			}
+		}
 
 		// end the frame and get ready for the next one  (display frame, poll input, etc...)
 		EndDrawing();
