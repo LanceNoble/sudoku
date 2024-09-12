@@ -98,12 +98,12 @@ void show(struct cell board[]) {
 		int originX = col * 100;
 		int originY = (i - col) / 9 * 100;
 		if (board[i].length == 1) {
-			DrawText(TextFormat("%i", board[i].choices[0]), originX + 50 - MeasureText(TextFormat("%i", board[i].choices[0]), 50) / 2, originY + 25, 50, WHITE);
+			DrawText(TextFormat("%i", board[i].choices[0] + 1), originX + 50 - MeasureText(TextFormat("%i", board[i].choices[0]), 50) / 2, originY + 25, 50, WHITE);
 			continue;
 		}
 		for (int j = 0; j < board[i].length; j++) {
 			int colCell = j % 3;
-			DrawText(TextFormat("%i", board[i].choices[j]), originX + 10 + colCell * 33, originY + 5 + (j - colCell) / 3 * 33, fontSize, WHITE);
+			DrawText(TextFormat("%i", board[i].choices[j] + 1), originX + 10 + colCell * 33, originY + 5 + (j - colCell) / 3 * 33, fontSize, WHITE);
 		}
 	}
 }
@@ -156,7 +156,8 @@ char* validate(struct cell board[]) {
 int main() {
 	srand(time(NULL)); 
 	struct cell board[81];
-	struct cell** minCells = NULL;
+	struct cell* minCells[81];
+	minCells[0] = NULL;
 	int minCellCount = 0;
 	int leastEnt = 9;
 	int isValid = 0;
@@ -175,15 +176,7 @@ int main() {
 		DrawText("Generate Board: 'R'", 0, 950, 30, WHITE);
 		if (isValid == 0 || (isValid == 1 && IsKeyPressed(KEY_R) && minCells != NULL)) {
 			isValid = 1;
-			free(minCells);
-			// Track cells with the lowest entropy
 			minCellCount = 81;
-			minCells = malloc(sizeof(struct cell*) * minCellCount);
-
-			// Check if memory was successfully allocated first or compiler cries
-			if (minCells == NULL)
-				exit(1);
-
 			for (int i = 0; i < 81; i++) {
 				board[i] = cell(i);
 				minCells[i] = &board[i];
@@ -195,7 +188,6 @@ int main() {
 			minCells[iCell]->choices[0] = minCells[iCell]->choices[rand_lim(minCells[iCell]->length - 1)];
 			minCells[iCell]->length = 1;
 			prop(board, minCells[iCell]->num, minCells[iCell]->choices[0]);
-
 			leastEnt = 9;
 			for (int i = 0; i < 81; i++) {
 				if (board[i].length < leastEnt && board[i].length > 1)
@@ -206,8 +198,6 @@ int main() {
 				if (board[i].length == leastEnt)
 					minCellCount++;
 			}
-			free(minCells);
-			minCells = malloc(sizeof(struct cell*) * minCellCount);
 			int iMinEnts = 0;
 			for (int i = 0; i < 81; i++) {
 				if (board[i].length == leastEnt) {
@@ -225,7 +215,6 @@ int main() {
 		// end the frame and get ready for the next one  (display frame, poll input, etc...)
 		EndDrawing();
 	}
-	free(minCells);
 	// destory the window and cleanup the OpenGL context
 	CloseWindow();
 	return 0;
