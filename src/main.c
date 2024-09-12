@@ -78,21 +78,16 @@ void elim(struct cell board[], int cellNum, int choice) {
 		prop(board, cellNum, board[cellNum].choices[0]);
 }
 
-// spread the news that all cells in the same row, box, and column as the collapsed cell can no longer contain its number 
+// spread the news that all cells in the same row, column, and box as the collapsed cell can no longer contain its number 
 void prop(struct cell board[], int cellNum, int choice) {
 	int col = cellNum % 9;
-	int row = (cellNum - col) / 9;
+	int row = cellNum / 9;
 	int yBox = col - (col % 3);
 	int xBox = row - (row % 3);
 	for (int i = 0; i < 9; i++) {
 		elim(board, row * 9 + i, choice);
 		elim(board, i * 9 + col, choice);
-		if (yBox > col + 2) {
-			yBox -= 3;
-			xBox++;
-		}
-		elim(board, xBox * 9 + yBox, choice);
-		yBox++;	
+		elim(board, (xBox + (i / 3)) * 9 + yBox + (i % 3), choice);
 	}
 }
 
@@ -119,31 +114,38 @@ void show(struct cell board[]) {
 	}
 }
 
-// validate sudoku board
-int validate(struct cell board[]) {
+// check if each row, col, and box on the sudoku board has consecutive numbers 0 - 8
+const char* validate(struct cell board[]) {
 	int sum = 0;
 	for (int i = 0; i < 81; i++) {
-		int col = i % 9;
-		int row = (i - col) / 9;
-		sum += board[row * 9 + col].choices[0];
-		sum += board[col * 9 + row].choices[0];
-	}
-	if (sum < 648)
-		return 0;
-	for (int i = 0; i < 81; i++) {
-
-	}
-	for (int j = 0; j < 9; j += 3) {
-		for (int i = 0; i < 9; i += 3) {
+		sum += board[i].choices[0];
+		if ((i + 1) % 9 == 0) {
+			if (sum != 36)
+				return TextFormat("Invalid Board: Please check Row %i", i / 9);
 			sum = 0;
-			for (int l = j; l < j + 3; l++) {
-				for (int k = i; k < j + 3; k++) {
-
-				}
-			}
 		}
 	}
-	return 1;
+	sum = 0;
+	for (int i = 0; i < 81; i++) {
+		sum += board[((i % 9) * 9) + (i / 9)].choices[0];
+		if ((i + 1) % 9 == 0) {
+			if (sum != 36)
+				return TextFormat("Invalid Board: Please check Col %i", i % 9);
+			sum = 0;
+		}
+	}
+	sum = 0;
+	int origins[9] = { 0,3,6,27,30,33,54,57,60 };
+	for (int i = 0; i < 9; i++) {
+		int col = origins[i] % 9;
+		int row = origins[i] / 9;
+		for (int j = 0; j < 9; j++)
+			sum += board[(row + (j / 3)) * 9 + col + (j % 3)].choices[0];
+		if (sum != 36)
+			return TextFormat("Invalid Board: Please check Box %i", i);
+		sum = 0;
+	}
+	return "Valid";
 }
 
 int main() {
@@ -174,7 +176,6 @@ int main() {
 	InitWindow(1920, 1080, "sudoku");
 	
 	int minEnt = 9;
-	int chosen = 0;
 	// game loop
 	while (!WindowShouldClose())		// run the loop untill the user presses ESCAPE or presses the Close button on the window
 	{
@@ -192,11 +193,10 @@ int main() {
 				singularCount++;
 		}
 		DrawText(TextFormat("The current lowest entropy is: %i", minEnt), 0, 1000, 30, WHITE);
-		DrawText(TextFormat("Cell %i has been chosen", chosen), 0, 950, 30, WHITE);
+		DrawText(validate(board), 0, 950, 30, WHITE);
 
 		if (singularCount < 81) {
 			int iCell = rand_lim(minEntsCount - 1);
-			chosen = minEnts[iCell]->num;
 			minEnts[iCell]->choices[0] = minEnts[iCell]->choices[rand_lim(minEnts[iCell]->length - 1)];
 			minEnts[iCell]->length = 1;
 			prop(board, minEnts[iCell]->num, minEnts[iCell]->choices[0]);
