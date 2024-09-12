@@ -32,16 +32,6 @@ For a C++ project simply rename the file to .cpp and re-run the build script
 #include <stdlib.h>
 #include <time.h>
 
-// return a random number between 0 and limit inclusive (https://stackoverflow.com/questions/2999075/generate-a-random-number-within-range)
-int rand_lim(int limit) {
-	int divisor = RAND_MAX / (limit + 1);
-	int retval;
-	do {
-		retval = rand() / divisor;
-	} while (retval > limit);
-	return retval;
-}
-
 struct cell {
 	int num; // label in an event that its index in an array does not match its position on the board
 	int* choices;
@@ -56,6 +46,16 @@ struct cell cell(int num) {
 	cell.num = num;
 	for (int i = 0; i < 9; i++) cell.choices[i] = i;
 	return cell;
+}
+
+// return a random number between 0 and limit inclusive (https://stackoverflow.com/questions/2999075/generate-a-random-number-within-range)
+int rand_lim(int limit) {
+	int divisor = RAND_MAX / (limit + 1);
+	int retval;
+	do {
+		retval = rand() / divisor;
+	} while (retval > limit);
+	return retval;
 }
 
 void elim(struct cell board[], int cellNum, int choice);
@@ -97,7 +97,6 @@ void show(struct cell board[]) {
 	for (int i = 0; i < 4; i++) DrawRectangle(0, i * 300, 900, 4, WHITE);
 	for (int i = 1; i < 9; i++) DrawLine(i * 100 + 2, 0, i * 100 + 2, 900, WHITE);
 	for (int i = 1; i < 9; i++) DrawLine(0, i * 100 + 2, 900, i * 100 + 2, WHITE);
-
 	int fontSize = 900 / 27;
 	for (int i = 0; i < 81; i++) {
 		int col = i % 9;
@@ -135,7 +134,7 @@ const char* validate(struct cell board[]) {
 		}
 	}
 	sum = 0;
-	int origins[9] = { 0,3,6,27,30,33,54,57,60 };
+	int origins[9] = { 0,3,6,27,30,33,54,57,60 }; // numbers of the top left cells of each box
 	for (int i = 0; i < 9; i++) {
 		int col = origins[i] % 9;
 		int row = origins[i] / 9;
@@ -149,83 +148,73 @@ const char* validate(struct cell board[]) {
 }
 
 int main() {
-	// Seed the RNG
-	srand(time(NULL));
-
+	srand(time(NULL)); 
 	struct cell board[81];
-
-	// Track cells with the lowest entropy
-	int minEntsCount = 81;
-	struct cell** minEnts = malloc(sizeof(struct cell*) * minEntsCount);
-
-	// Check if memory was successfully allocated or compiler cries
-	if (minEnts == NULL) {
-		printf("Memory not allocated");
-		return;
-	}
-
-	for (int i = 0; i < 81; i++) {
-		board[i] = cell(i);
-		minEnts[i] = &board[i];
-	}
-
+	struct cell** minCells = NULL;
+	int minCellCount = 0;
+	int leastEnt = 9;
 	// Tell the window to use vysnc and work on high DPI displays
 	SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
-
 	// Create the window and OpenGL context
 	InitWindow(1920, 1080, "sudoku");
-	
-	int minEnt = 9;
 	// game loop
-	while (!WindowShouldClose())		// run the loop untill the user presses ESCAPE or presses the Close button on the window
-	{
+	while (!WindowShouldClose()) { // run the loop untill the user presses ESCAPE or presses the Close button on the 
 		// drawing
 		BeginDrawing();
-
 		// Setup the backbuffer for drawing (clear color and depth buffers)
 		ClearBackground(BLACK);
 		
 		show(board);
+		DrawText("Generate Board: 'R'", 0, 950, 30, WHITE);
+		if (IsKeyPressed(KEY_R) && minCellCount == 0) {
+			free(minCells);
+			// Track cells with the lowest entropy
+			minCellCount = 81;
+			minCells = malloc(sizeof(struct cell*) * minCellCount);
 
-		int singularCount = 0;
-		for (int i = 0; i < 81; i++) {
-			if (board[i].length == 1)
-				singularCount++;
+			// Check if memory was successfully allocated first or compiler cries
+			if (minCells == NULL)
+				exit(1);
+
+			for (int i = 0; i < 81; i++) {
+				board[i] = cell(i);
+				minCells[i] = &board[i];
+			}
 		}
-		DrawText(TextFormat("The current lowest entropy is: %i", minEnt), 0, 1000, 30, WHITE);
-		DrawText(validate(board), 0, 950, 30, WHITE);
+		// Generation loop
+		if (minCellCount > 0) {
+			int iCell = rand_lim(minCellCount - 1);
+			minCells[iCell]->choices[0] = minCells[iCell]->choices[rand_lim(minCells[iCell]->length - 1)];
+			minCells[iCell]->length = 1;
+			prop(board, minCells[iCell]->num, minCells[iCell]->choices[0]);
 
-		if (singularCount < 81) {
-			int iCell = rand_lim(minEntsCount - 1);
-			minEnts[iCell]->choices[0] = minEnts[iCell]->choices[rand_lim(minEnts[iCell]->length - 1)];
-			minEnts[iCell]->length = 1;
-			prop(board, minEnts[iCell]->num, minEnts[iCell]->choices[0]);
-
-			minEnt = 9;
+			leastEnt = 9;
 			for (int i = 0; i < 81; i++) {
-				if (board[i].length < minEnt && board[i].length > 1)
-					minEnt = board[i].length;
+				if (board[i].length < leastEnt && board[i].length > 1)
+					leastEnt = board[i].length;
 			}
-			minEntsCount = 0;
+			minCellCount = 0;
 			for (int i = 0; i < 81; i++) {
-				if (board[i].length == minEnt)
-					minEntsCount++;
+				if (board[i].length == leastEnt)
+					minCellCount++;
 			}
-			free(minEnts);
-			minEnts = malloc(sizeof(struct cell*) * minEntsCount);
+			free(minCells);
+			minCells = malloc(sizeof(struct cell*) * minCellCount);
 			int iMinEnts = 0;
 			for (int i = 0; i < 81; i++) {
-				if (board[i].length == minEnt) {
-					minEnts[iMinEnts] = &board[i];
+				if (board[i].length == leastEnt) {
+					minCells[iMinEnts] = &board[i];
 					iMinEnts++;
 				}
 			}
 		}
-
+		
+		if (minCellCount == 0 && minCells != NULL)
+			DrawText(validate(board), 0, 1000, 30, WHITE);
 		// end the frame and get ready for the next one  (display frame, poll input, etc...)
 		EndDrawing();
 	}
-
+	free(minCells);
 	// destory the window and cleanup the OpenGL context
 	CloseWindow();
 	return 0;
