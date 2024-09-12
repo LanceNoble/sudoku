@@ -34,13 +34,12 @@ For a C++ project simply rename the file to .cpp and re-run the build script
 
 struct cell {
 	int num; // label in an event that its index in an array does not match its position on the board
-	int* choices;
+	int choices[9];
 	int length;
 };
 // construct a cell
 struct cell cell(int num) {
 	struct cell cell;
-	cell.choices = malloc(9 * sizeof(int));
 	cell.length = 9;
 	cell.num = num;
 	for (int i = 0; i < 9; i++) cell.choices[i] = i;
