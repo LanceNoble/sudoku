@@ -37,7 +37,6 @@ struct cell {
 	int* choices;
 	int length;
 };
-
 // construct a cell
 struct cell cell(int num) {
 	struct cell cell;
@@ -47,7 +46,6 @@ struct cell cell(int num) {
 	for (int i = 0; i < 9; i++) cell.choices[i] = i;
 	return cell;
 }
-
 // return a random number between 0 and limit inclusive (https://stackoverflow.com/questions/2999075/generate-a-random-number-within-range)
 int rand_lim(int limit) {
 	int divisor = RAND_MAX / (limit + 1);
@@ -60,7 +58,6 @@ int rand_lim(int limit) {
 
 void elim(struct cell board[], int cellNum, int choice);
 void prop(struct cell board[], int cellNum, int choice);
-
 // eliminate the possibility that a cell can contain this number
 void elim(struct cell board[], int cellNum, int choice) {
 	if (board[cellNum].length == 1)
@@ -77,7 +74,6 @@ void elim(struct cell board[], int cellNum, int choice) {
 	if (board[cellNum].length == 1)
 		prop(board, cellNum, board[cellNum].choices[0]);
 }
-
 // spread the news that all cells in the same row, column, and box as the collapsed cell can no longer contain its number 
 void prop(struct cell board[], int cellNum, int choice) {
 	int col = cellNum % 9;
@@ -90,7 +86,6 @@ void prop(struct cell board[], int cellNum, int choice) {
 		elim(board, (xBox + (i / 3)) * 9 + yBox + (i % 3), choice);
 	}
 }
-
 // draw the sudoku board
 void show(struct cell board[]) {
 	for (int i = 0; i < 4; i++) DrawRectangle(i * 300, 0, 4, 900, WHITE);
@@ -112,15 +107,18 @@ void show(struct cell board[]) {
 		}
 	}
 }
-
 // check if each row, col, and box on the sudoku board has consecutive numbers 0 - 8
-const char* validate(struct cell board[]) {
+char* validate(struct cell board[]) {
+	char code[2];
 	int sum = 0;
 	for (int i = 0; i < 81; i++) {
 		sum += board[i].choices[0];
 		if ((i + 1) % 9 == 0) {
-			if (sum != 36)
-				return TextFormat("Invalid Board: Please check Row %i", i / 9);
+			if (sum != 36) {
+				code[0] = 1;
+				code[1] = (i / 9) + 1;
+				return code;
+			}
 			sum = 0;
 		}
 	}
@@ -128,8 +126,11 @@ const char* validate(struct cell board[]) {
 	for (int i = 0; i < 81; i++) {
 		sum += board[((i % 9) * 9) + (i / 9)].choices[0];
 		if ((i + 1) % 9 == 0) {
-			if (sum != 36)
-				return TextFormat("Invalid Board: Please check Col %i", i % 9);
+			if (sum != 36) {
+				code[0] = 2;
+				code[1] = (i % 9) + 1;
+				return code;
+			}
 			sum = 0;
 		}
 	}
@@ -140,11 +141,16 @@ const char* validate(struct cell board[]) {
 		int row = origins[i] / 9;
 		for (int j = 0; j < 9; j++)
 			sum += board[(row + (j / 3)) * 9 + col + (j % 3)].choices[0];
-		if (sum != 36)
-			return TextFormat("Invalid Board: Please check Box %i", i);
+		if (sum != 36) {
+			code[0] = 3;
+			code[1] = i + 1;
+			return code;
+		}
 		sum = 0;
 	}
-	return "Valid";
+	code[0] = 0;
+	code[1] = 0;
+	return code;
 }
 
 int main() {
@@ -153,6 +159,7 @@ int main() {
 	struct cell** minCells = NULL;
 	int minCellCount = 0;
 	int leastEnt = 9;
+	int isValid = 0;
 	// Tell the window to use vysnc and work on high DPI displays
 	SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
 	// Create the window and OpenGL context
@@ -166,7 +173,8 @@ int main() {
 		
 		show(board);
 		DrawText("Generate Board: 'R'", 0, 950, 30, WHITE);
-		if (IsKeyPressed(KEY_R) && minCellCount == 0) {
+		if (isValid == 0 || (isValid == 1 && IsKeyPressed(KEY_R) && minCells != NULL)) {
+			isValid = 1;
 			free(minCells);
 			// Track cells with the lowest entropy
 			minCellCount = 81;
@@ -209,8 +217,11 @@ int main() {
 			}
 		}
 		
-		if (minCellCount == 0 && minCells != NULL)
-			DrawText(validate(board), 0, 1000, 30, WHITE);
+		if (minCellCount == 0 && minCells != NULL) {
+			char* check = validate(board);
+			if (check[0] != 0) 
+				isValid = 0;
+		}
 		// end the frame and get ready for the next one  (display frame, poll input, etc...)
 		EndDrawing();
 	}
