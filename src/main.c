@@ -109,43 +109,37 @@ void show(struct cell board[]) {
 // check if each row, col, and box on the sudoku board has consecutive numbers 0 - 8
 char* validate(struct cell board[]) {
 	char code[2];
-	int sum = 0;
-	for (int i = 0; i < 81; i++) {
-		sum += board[i].choices[0];
-		if ((i + 1) % 9 == 0) {
-			if (sum != 36) {
-				code[0] = 1;
-				code[1] = (i / 9) + 1;
-				return code;
-			}
-			sum = 0;
+	int sumRow = 0;
+	int sumCol = 0;
+	int sumBox = 0;
+	for (int diag = 0; diag < 9; diag++) {
+		for (int i = 0; i < 9; i++) {
+			sumRow += board[9 * diag + i].choices[0];
+			sumCol += board[9 * i + diag].choices[0];
 		}
-	}
-	sum = 0;
-	for (int i = 0; i < 81; i++) {
-		sum += board[((i % 9) * 9) + (i / 9)].choices[0];
-		if ((i + 1) % 9 == 0) {
-			if (sum != 36) {
-				code[0] = 2;
-				code[1] = (i % 9) + 1;
-				return code;
-			}
-			sum = 0;
+		if (sumRow != 36) {
+			code[0] = 1;
+			code[1] = diag + 1;
 		}
+		else if (sumCol != 36) {
+			code[0] = 2;
+			code[1] = diag + 1;
+		}
+		sumRow = 0;
+		sumCol = 0;
 	}
-	sum = 0;
 	int origins[9] = { 0,3,6,27,30,33,54,57,60 }; // numbers of the top left cells of each box
 	for (int i = 0; i < 9; i++) {
 		int col = origins[i] % 9;
 		int row = origins[i] / 9;
 		for (int j = 0; j < 9; j++)
-			sum += board[(row + (j / 3)) * 9 + col + (j % 3)].choices[0];
-		if (sum != 36) {
+			sumBox += board[(row + (j / 3)) * 9 + col + (j % 3)].choices[0];
+		if (sumBox != 36) {
 			code[0] = 3;
 			code[1] = i + 1;
 			return code;
 		}
-		sum = 0;
+		sumBox = 0;
 	}
 	code[0] = 0;
 	code[1] = 0;
